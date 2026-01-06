@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const Onboarding = () => {
+const Onboarding = ({ navigation }) => {
   const [firstName, setFirstName] = useState("");
   const [email, setEmail] = useState("");
 
@@ -46,7 +46,7 @@ const Onboarding = () => {
       email: emailError,
     });
     if (!nameError && !emailError) {
-      Alert.alert("Success", "Onboarding completed successfully!");
+      navigation.navigate("Profile");
     }
   };
   const isFormValid = () => {
