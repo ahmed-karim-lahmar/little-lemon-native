@@ -7,10 +7,12 @@ import {
   Text,
   TouchableOpacity,
   Alert,
+  Platform,
+  StatusBar,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const Onboarding = ({ navigation }) => {
+const Onboarding = ({ handleSignIn }) => {
   const [firstName, setFirstName] = useState("");
   const [email, setEmail] = useState("");
 
@@ -46,7 +48,8 @@ const Onboarding = ({ navigation }) => {
       email: emailError,
     });
     if (!nameError && !emailError) {
-      navigation.navigate("Profile");
+      // navigation.navigate("Profile");
+      handleSignIn({ firstName, email });
     }
   };
   const isFormValid = () => {
@@ -54,9 +57,13 @@ const Onboarding = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <View style={styles.header}>
-        <Image style={styles.image} source={require("../assets/Logo.png")} />
+        <Image
+          resizeMode="contain"
+          style={styles.image}
+          source={require("../assets/Logo.png")}
+        />
       </View>
       <View style={styles.content}>
         <Text style={styles.title}>Let us get to know you</Text>
@@ -92,7 +99,7 @@ const Onboarding = ({ navigation }) => {
           </Text>
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -101,18 +108,16 @@ const styles = StyleSheet.create({
     width: "100%",
     flex: 1,
     backgroundColor: "#CBD2D9",
+    paddingTop: Platform.OS === "android" ? -StatusBar.currentHeight : 0,
   },
   header: {
-    display: "flex",
     padding: "10",
-    justifyContent: "center",
-    alignItems: "center",
     backgroundColor: "#DEE3E9",
+    width: "100%",
   },
   image: {
-    height: "60",
+    height: 60,
     width: "100%",
-    objectFit: "scale-down",
   },
   content: {
     display: "flex",

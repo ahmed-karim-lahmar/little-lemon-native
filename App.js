@@ -1,14 +1,71 @@
 import { StatusBar } from "expo-status-bar";
-import { StyleSheet, Text, View } from "react-native";
+import { Image, StyleSheet, Text, View } from "react-native";
 import Onboarding from "./screens/Onboarding";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import Profile from "./screens/Profile";
+import { useEffect, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const Stack = createStackNavigator();
 
 export default function App() {
+  const [isSignedIn, setIsSignedIn] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+
+        const userData = await AsyncStorage.getItem("user_data");
+        if (userData) {
+          setIsSignedIn(true);
+        }
+      } catch (error) {
+        console.log(error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    checkAuthStatus();
+  }, []);
+
+  const handleSignIn = async ({ firstName, email }) => {
+    try {
+      await AsyncStorage.setItem(
+        "user_data",
+        JSON.stringify({ firstName, email })
+      );
+      setIsSignedIn(true);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await AsyncStorage.removeItem("user_data");
+      setIsSignedIn(false);
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <StatusBar style="auto" />
+        <Image
+          resizeMode="contain"
+          style={styles.image}
+          source={require("./assets/Logo.png")}
+        />
+      </View>
+    );
+  }
+
   return (
     <SafeAreaProvider>
       <NavigationContainer>
@@ -19,8 +76,15 @@ export default function App() {
             contentStyle: styles.container,
           }}
         >
-          <Stack.Screen name="Onboarding" component={Onboarding} />
-          <Stack.Screen name="Profile" component={Profile} />
+          {isSignedIn ? (
+            <Stack.Screen name="Profile">
+              {(props) => <Profile {...props} handleSignOut={handleSignOut} />}
+            </Stack.Screen>
+          ) : (
+            <Stack.Screen name="Onboarding">
+              {(props) => <Onboarding {...props} handleSignIn={handleSignIn} />}
+            </Stack.Screen>
+          )}
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>
