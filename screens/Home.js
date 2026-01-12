@@ -6,12 +6,19 @@ import {
   StyleSheet,
   Text,
   FlatList,
+  TextInput,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { typography } from "../styles/global";
-import { initDatabase, saveMenuItems, getMenuItems } from "../database";
+import {
+  initDatabase,
+  saveMenuItems,
+  getMenuItems,
+  searchMenuItems,
+  getMenuItemsByCategory,
+} from "../database";
 const MENU_URL =
   "https://raw.githubusercontent.com/Meta-Mobile-Developer-PC/Working-With-Data-API/main/capstone.json";
 
@@ -20,7 +27,9 @@ const IMGS_URL =
 
 export default function Home({ navigation }) {
   const [avatar, setAvatar] = useState(null);
+  const [searchText, setSearchText] = useState("");
   const [menu, setMenu] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [filteredMenu, setFilteredMenu] = useState([]);
   const [activeCategories, setActiveCategories] = useState([]);
   const categories = [
@@ -49,22 +58,57 @@ export default function Home({ navigation }) {
     loadAvatar();
   }, []);
 
+  const debounce = (func, delay) => {
+    let timeoutId;
+    return (...args) => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => func(...args), delay);
+    };
+  };
+
+  const filterMenu = useCallback(async () => {
+    try {
+      let results;
+      if (searchText) {
+        results = await searchMenuItems(searchText, activeCategories);
+      } else if (activeCategories.length > 0) {
+        results = await getMenuItemsByCategory(activeCategories);
+      } else {
+        results = await getMenuItems();
+      }
+      setFilteredMenu(results);
+    } catch (error) {
+      console.error("Error filtering menu:", error);
+    }
+  }, [searchText, activeCategories]);
+
+  const debouncedFilter = useCallback(
+    debounce(() => {
+      filterMenu();
+    }, 500),
+    [filterMenu]
+  );
+
+  useEffect(() => {
+    debouncedFilter();
+  }, [searchText, activeCategories, debouncedFilter]);
+
   useEffect(() => {
     const loadData = async () => {
       try {
         await initDatabase();
         const storedMenu = await getMenuItems();
 
-        if (storedMenu.length > 0) {
-          setMenu(storedMenu);
-          setFilteredMenu(storedMenu);
-        } else {
+        if (storedMenu.length === 0) {
           const response = await fetch(MENU_URL);
           const data = await response.json();
           const menuItems = data.menu || [];
           await saveMenuItems(menuItems);
           setMenu(menuItems);
           setFilteredMenu(menuItems);
+        } else {
+          setMenu(storedMenu);
+          setFilteredMenu(storedMenu);
         }
       } catch (error) {
         console.error("Error loading menu data:", error);
@@ -75,27 +119,30 @@ export default function Home({ navigation }) {
     loadData();
   }, []);
 
-  const toggleCategory = (category) => {
-    let newCategories;
-    if (activeCategories.includes(category)) {
-      newCategories = activeCategories.filter((c) => c !== category);
-    } else {
-      newCategories = [...activeCategories, category];
-    }
-    setActiveCategories(newCategories);
-
-    if (newCategories.length === 0) {
-      setFilteredMenu(menu);
-    } else {
-      setFilteredMenu(
-        menu.filter((item) => newCategories.includes(item.category))
-      );
-    }
+  const toggleCategory = (categoryId) => {
+    setActiveCategories((prev) =>
+      prev.includes(categoryId)
+        ? prev.filter((id) => id !== categoryId)
+        : [...prev, categoryId]
+    );
   };
   const [imageError, setImageError] = useState({});
   const handleImageError = (itemName) => {
     setImageError((prev) => ({ ...prev, [itemName]: true }));
   };
+
+  const CategoryItem = ({ item, isActive, onPress }) => (
+    <TouchableOpacity
+      style={[styles.categoryButton, isActive && styles.activeCategory]}
+      onPress={onPress}
+    >
+      <Text
+        style={[styles.categoryText, isActive && styles.activeCategoryText]}
+      >
+        {item.name}
+      </Text>
+    </TouchableOpacity>
+  );
 
   const renderMenuItem = ({ item }) => (
     <View style={styles.menuItem}>
@@ -171,9 +218,20 @@ export default function Home({ navigation }) {
               />
             </View>
           </View>
-          <TouchableOpacity style={styles.searchButton}>
-            <Ionicons name="search" size={24} color="#333333" />
-          </TouchableOpacity>
+          <View style={styles.searchContainer}>
+            <Ionicons
+              name="search"
+              size={20}
+              color="#333"
+              style={styles.searchIcon}
+            />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search menu..."
+              value={searchText}
+              onChangeText={setSearchText}
+            />
+          </View>
         </View>
 
         <View style={styles.section}>
@@ -184,37 +242,25 @@ export default function Home({ navigation }) {
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            style={styles.categoriesContainer}
-            contentContainerStyle={styles.categoriesContent}
+            contentContainerStyle={styles.categoriesList}
           >
             {categories.map((category) => (
-              <TouchableOpacity
+              <CategoryItem
                 key={category.id}
-                style={[
-                  styles.categoryButton,
-                  activeCategories.includes(category.id) &&
-                    styles.categoryButtonActive,
-                ]}
+                item={category}
+                isActive={activeCategories.includes(category.id)}
                 onPress={() => toggleCategory(category.id)}
-              >
-                <Text
-                  style={[
-                    styles.categoryButtonText,
-                    activeCategories.includes(category.id) &&
-                      styles.categoryButtonTextActive,
-                  ]}
-                >
-                  {category.name}
-                </Text>
-              </TouchableOpacity>
+              />
             ))}
           </ScrollView>
           <FlatList
             data={filteredMenu}
             renderItem={renderMenuItem}
-            keyExtractor={(item) => item.name}
-            scrollEnabled={false}
+            keyExtractor={(item) => item.id.toString()}
             contentContainerStyle={styles.menuList}
+            ListEmptyComponent={
+              <Text style={styles.emptyText}>No items found</Text>
+            }
           />
         </View>
       </ScrollView>
@@ -288,13 +334,21 @@ const styles = StyleSheet.create({
     width: "100%",
     resizeMode: "cover",
   },
-  searchButton: {
-    marginTop: 36,
+  searchContainer: {
+    flexDirection: "row",
     backgroundColor: "#D9D9D9",
-    padding: 16,
-    borderRadius: "45%",
-    alignSelf: "flex-start",
-    marginStart: 12,
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  searchIcon: {
+    marginRight: 10,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
   },
   section: {
     padding: 16,
@@ -316,14 +370,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginRight: 12,
   },
-  categoryButtonActive: {
+  activeCategory: {
     backgroundColor: "#495E57",
   },
-  categoryButtonText: {
+  categoryText: {
     color: "#333",
-    fontWeight: "500",
   },
-  categoryButtonTextActive: {
+  activeCategoryText: {
     color: "#fff",
   },
   menuList: {
@@ -362,5 +415,13 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 8,
     backgroundColor: "#f0f0f0",
+  },
+  menuList: {
+    padding: 8,
+  },
+  emptyText: {
+    textAlign: "center",
+    marginTop: 20,
+    color: "#666",
   },
 });

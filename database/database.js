@@ -68,4 +68,36 @@ export const getMenuItems = async () => {
   }
 };
 
+export const getMenuItemsByCategory = async (categories) => {
+  try {
+    if (!categories || categories.length === 0) {
+      return await getMenuItems();
+    }
+
+    const placeholders = categories.map(() => "?").join(",");
+    const query = `SELECT * FROM menu WHERE category IN (${placeholders})`;
+    return await db.getAllAsync(query, categories);
+  } catch (error) {
+    console.error("Error getting menu items by category:", error);
+    throw error;
+  }
+};
+export const searchMenuItems = async (searchText, categories = []) => {
+  try {
+    let query = "SELECT * FROM menu WHERE name LIKE ?";
+    const params = [`%${searchText}%`];
+
+    if (categories.length > 0) {
+      const placeholders = categories.map(() => "?").join(",");
+      query += ` AND category IN (${placeholders})`;
+      params.push(...categories);
+    }
+
+    return await db.getAllAsync(query, params);
+  } catch (error) {
+    console.error("Error searching menu items:", error);
+    throw error;
+  }
+};
+
 export { initDatabase, db };
