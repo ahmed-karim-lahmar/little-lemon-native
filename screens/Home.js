@@ -11,7 +11,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { typography } from "../styles/global";
-
+import { initDatabase, saveMenuItems, getMenuItems } from "../database";
 const MENU_URL =
   "https://raw.githubusercontent.com/Meta-Mobile-Developer-PC/Working-With-Data-API/main/capstone.json";
 
@@ -45,18 +45,34 @@ export default function Home({ navigation }) {
         console.log(error);
       }
     };
-    const fetchMenu = async () => {
+
+    loadAvatar();
+  }, []);
+
+  useEffect(() => {
+    const loadData = async () => {
       try {
-        const response = await fetch(MENU_URL);
-        const data = await response.json();
-        setMenu(data.menu || []);
-        setFilteredMenu(data.menu || []);
+        await initDatabase();
+        const storedMenu = await getMenuItems();
+
+        if (storedMenu.length > 0) {
+          setMenu(storedMenu);
+          setFilteredMenu(storedMenu);
+        } else {
+          const response = await fetch(MENU_URL);
+          const data = await response.json();
+          const menuItems = data.menu || [];
+          await saveMenuItems(menuItems);
+          setMenu(menuItems);
+          setFilteredMenu(menuItems);
+        }
       } catch (error) {
-        console.error("Error fetching menu:", error);
+        console.error("Error loading menu data:", error);
+      } finally {
+        setIsLoading(false);
       }
     };
-    loadAvatar();
-    fetchMenu();
+    loadData();
   }, []);
 
   const toggleCategory = (category) => {
