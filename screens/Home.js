@@ -76,6 +76,10 @@ export default function Home({ navigation }) {
       );
     }
   };
+  const [imageError, setImageError] = useState({});
+  const handleImageError = (itemName) => {
+    setImageError((prev) => ({ ...prev, [itemName]: true }));
+  };
 
   const renderMenuItem = ({ item }) => (
     <View style={styles.menuItem}>
@@ -94,9 +98,14 @@ export default function Home({ navigation }) {
         </Text>
       </View>
       <Image
-        source={{ uri: `${IMGS_URL}${item.image}?raw=true` }}
+        source={
+          imageError[item.name]
+            ? ""
+            : { uri: `${IMGS_URL}${item.image}?raw=true` }
+        }
         style={styles.menuItemImage}
         resizeMode="cover"
+        onError={() => handleImageError(item.name)}
       />
     </View>
   );
@@ -336,5 +345,6 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 8,
+    backgroundColor: "#f0f0f0",
   },
 });
