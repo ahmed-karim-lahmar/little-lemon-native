@@ -7,6 +7,7 @@ import { createStackNavigator } from "@react-navigation/stack";
 import Profile from "./screens/Profile";
 import { useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import Home from "./screens/Home";
 import {
   MarkaziText_400Regular,
   MarkaziText_500Medium,
@@ -98,9 +99,16 @@ export default function App() {
           }}
         >
           {isSignedIn ? (
-            <Stack.Screen name="Profile">
-              {(props) => <Profile {...props} handleSignOut={handleSignOut} />}
-            </Stack.Screen>
+            <>
+              <Stack.Screen name="Home">
+                {(props) => <Home {...props} />}
+              </Stack.Screen>
+              <Stack.Screen name="Profile">
+                {(props) => (
+                  <Profile {...props} handleSignOut={handleSignOut} />
+                )}
+              </Stack.Screen>
+            </>
           ) : (
             <Stack.Screen name="Onboarding">
               {(props) => <Onboarding {...props} handleSignIn={handleSignIn} />}
