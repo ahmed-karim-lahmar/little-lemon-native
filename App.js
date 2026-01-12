@@ -7,10 +7,31 @@ import { createStackNavigator } from "@react-navigation/stack";
 import Profile from "./screens/Profile";
 import { useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+  MarkaziText_400Regular,
+  MarkaziText_500Medium,
+} from "@expo-google-fonts/markazi-text";
+import {
+  Karla_400Regular,
+  Karla_500Medium,
+  Karla_600SemiBold,
+  Karla_700Bold,
+  Karla_800ExtraBold,
+} from "@expo-google-fonts/karla";
+import { useFonts } from "expo-font";
 
 const Stack = createStackNavigator();
 
 export default function App() {
+  const [fontsLoaded] = useFonts({
+    MarkaziText_400Regular,
+    MarkaziText_500Medium,
+    Karla_400Regular,
+    Karla_500Medium,
+    Karla_600SemiBold,
+    Karla_700Bold,
+    Karla_800ExtraBold,
+  });
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -53,7 +74,7 @@ export default function App() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || !fontsLoaded) {
     return (
       <View style={styles.container}>
         <StatusBar style="auto" />
